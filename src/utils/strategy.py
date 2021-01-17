@@ -1,3 +1,5 @@
+import tensorflow as tf
+
 def get_strategy(logger):
     # Detect hardware, return appropriate distribution strategy.
     # You can see that it is pretty easy to set up.
