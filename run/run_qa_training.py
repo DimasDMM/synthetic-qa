@@ -5,7 +5,7 @@ import argparse
 import logging as logger
 
 from src import *
-from src.runs.training import run_training
+from src.runs.qa_training import run_qa_training
 from src.utils.config import Config
 
 if __name__ != '__main__':
