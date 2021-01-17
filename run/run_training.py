@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.path.join(sys.path[0], '..'))
+
 import argparse
 import logging as logger
 
@@ -28,7 +31,7 @@ parser.add_argument('--ckpt_name',
                     type=none_or_str,
                     action='store')
 parser.add_argument('--dataset',
-                    default='genia',
+                    default='squad',
                     type=str,
                     action='store')
 parser.add_argument('--batch_size',
