@@ -67,4 +67,4 @@ setup_logger(logger, args.log_to_file)
 
 config = Config(**args.__dict__)
 
-run_training(logger, config)
+run_qa_training(logger, config)
