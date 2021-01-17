@@ -7,8 +7,12 @@ from ..models.tf.callbacks import *
 from ..models.tf.metrics import *
 from ..models.tf.qa import *
 from ..utils.config import *
+from ..utils.strategy import *
 
-def run_qa_training(logger, strategy, config: Config):
+def run_qa_training(logger, config: Config):
+    logger.info(config)
+    strategy = get_strategy(logger)
+
     logger.info('== SET UP ==')
 
     artifacts_path = get_project_path('artifacts')
