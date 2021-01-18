@@ -9,7 +9,7 @@ class ModelManager:
         self.pretrained_model = pretrained_model
 
     def build(self):
-        model = TFBertForQuestionAnswering.from_pretrained(self.pretrained_model)
+        model = TFBertForQuestionAnswering.from_pretrained(self.pretrained_model, from_pt=False)
         return model
 
     def load(self, strategy, model_ckpt):
