@@ -39,12 +39,12 @@ slow_tokenizer = BertTokenizer.from_pretrained(args.lm_name)
 slow_tokenizer.save_pretrained(save_path)
 
 logger.info('Download model')
-if model_type == 'tf':
+if args.model_type == 'tf':
     model = TFBertModel.from_pretrained(args.lm_name)
-elif model_type == 'torch':
+elif args.model_type == 'torch':
     model = BertModel.from_pretrained(args.lm_name)
 else:
-    raise Exception('Unknown value for model_type: %s' % model_type)
+    raise Exception('Unknown value for model_type: %s' % args.model_type)
 
 model.save_pretrained(save_path)
 
