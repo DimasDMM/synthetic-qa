@@ -11,39 +11,37 @@ from src.utils.config import Config
 if __name__ != '__main__':
     exit(0)
 
-def none_or_str(value):
-    if value == 'None':
-        return None
-    return value
-
-def none_or_int(value):
-    if value == 'None':
-        return None
-    return int(value)
-
 parser = argparse.ArgumentParser(description='Arguments for training.')
 parser.add_argument('--log_to_file',
-                    default=False,
-                    type=int,
+                    default=None,
+                    type=none_or_str,
                     action='store')
 parser.add_argument('--ckpt_name',
                     default=None,
                     type=none_or_str,
                     action='store')
-parser.add_argument('--dataset',
+parser.add_argument('--dataset_name',
                     default='squad',
                     type=str,
                     action='store')
 parser.add_argument('--batch_size',
-                    default=64,
+                    default=32,
                     type=int,
                     action='store')
 parser.add_argument('--max_epoches',
-                    default=100,
+                    default=10,
                     type=int,
                     action='store')
+parser.add_argument('--learning_rate',
+                    default=1e-5,
+                    type=float,
+                    action='store')
 parser.add_argument('--cased',
-                    default=False,
+                    default=True,
+                    type=int,
+                    action='store')
+parser.add_argument('--max_length',
+                    default=512,
                     type=int,
                     action='store')
 parser.add_argument('--hidden_dim',

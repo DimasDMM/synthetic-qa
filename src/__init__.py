@@ -1,17 +1,25 @@
 import numpy as np
 import os
-import tensorflow as tf
-
-np.random.seed(42)
+import random
+import torch
 
 BASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+DEFAULT_SEED = 42
 
-def get_project_path(partial_path):
-    return os.path.join(BASE_PATH, partial_path)
+def set_seed(seed):
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
-def setup_logger(logger, to_file=False):
-    if to_file:
-        logger.basicConfig(filename=get_project_path('logger.log'),
+def get_project_path(*paths):
+    return os.path.join(BASE_PATH, *paths)
+
+def setup_logger(logger, output_file=None):
+    if output_file is not None:
+        logger.basicConfig(filename=get_project_path(output_file),
                            filemode='a',
                            format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                            datefmt='%H:%M:%S',
@@ -21,24 +29,12 @@ def setup_logger(logger, to_file=False):
                            datefmt='%H:%M:%S',
                            level=logger.DEBUG)
 
-def get_strategy(logger):
-    # Detect hardware, return appropriate distribution strategy.
-    # You can see that it is pretty easy to set up.
-    try:
-        # TPU detection: no parameters necessary if TPU_NAME environment
-        # variable is set (always set in Kaggle)
-        tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
-        tf.config.experimental_connect_to_cluster(tpu)
-        tf.tpu.experimental.initialize_tpu_system(tpu)
-        strategy = tf.distribute.experimental.TPUStrategy(tpu)
-        logger.info('Running on TPU: ' + tpu.master())
-    except ValueError:
-        # Default distribution strategy in Tensorflow. Works on CPU and single GPU.
-        if len(tf.config.experimental.list_physical_devices('GPU')) > 0:
-            logger.info('Running on GPU')
-        else:
-            logger.info('Running on CPU')
-        strategy = tf.distribute.get_strategy()
+def none_or_str(value):
+    if value == 'None':
+        return None
+    return value
 
-    #print('Number of replicas:', strategy.num_replicas_in_sync)
-    return strategy
+def none_or_int(value):
+    if value == 'None':
+        return None
+    return int(value)

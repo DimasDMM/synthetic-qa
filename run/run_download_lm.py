@@ -4,8 +4,7 @@ sys.path.append(os.path.join(sys.path[0], '..'))
 import argparse
 import logging as logger
 import os
-from transformers import BertModel, TFBertModel
-from transformers import BertTokenizer
+from transformers import AutoModel, AutoTokenizer
 from src import *
 
 if __name__ != '__main__':
@@ -13,8 +12,8 @@ if __name__ != '__main__':
 
 parser = argparse.ArgumentParser(description='Arguments for LM Download.')
 parser.add_argument('--log_to_file',
-                    default=False,
-                    type=int,
+                    default=None,
+                    type=none_or_str,
                     action='store')
 parser.add_argument('--lm_name',
                     default='bert-base-multilingual-cased',
@@ -35,16 +34,11 @@ if not os.path.exists(save_path):
     os.makedirs(save_path)
 
 logger.info('Download tokenizer')
-slow_tokenizer = BertTokenizer.from_pretrained(args.lm_name)
+slow_tokenizer = AutoTokenizer.from_pretrained(args.lm_name)
 slow_tokenizer.save_pretrained(save_path)
 
 logger.info('Download model')
-if args.model_type == 'tf':
-    model = TFBertModel.from_pretrained(args.lm_name)
-elif args.model_type == 'torch':
-    model = BertModel.from_pretrained(args.lm_name)
-else:
-    raise Exception('Unknown value for model_type: %s' % args.model_type)
+model = AutoModel.from_pretrained(args.lm_name)
 
 model.save_pretrained(save_path)
 

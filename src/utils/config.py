@@ -7,12 +7,12 @@ class Config:
         ckpt_name='model_ckpt',
         dataset_name='squad',
         hidden_dim=768,
-        batch_size=64,
-        max_epoches=500,
+        batch_size=32,
+        max_epoches=10,
         max_length=512,
-        lm_name='bert-base-multilingual-cased',
-        model_type='tf',
-        continue_training=True,
+        learning_rate=1e-5,
+        lm_name='bert-base-cased',
+        continue_training=False,
         device=None,
         current_score=0.,
         current_epoch=0,
@@ -26,8 +26,8 @@ class Config:
         self.batch_size = batch_size
         self.max_epoches = max_epoches
         self.max_length = max_length
+        self.learning_rate = learning_rate
         self.lm_name = lm_name
-        self.model_type = model_type
         self.continue_training = continue_training
         self.device = device
         self.current_score = current_score
