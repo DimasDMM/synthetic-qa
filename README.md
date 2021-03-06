@@ -13,6 +13,21 @@ Prepare pretrained BERT model:
 python ./run/run_download_lm.py --lm_name bert-base-multilingual-cased
 ```
 
+Run QA training:
+```sh
+python ./run/run_qa_training.py \
+    --ckpt_name qa_mbert_squad \
+    --dataset_name squad \
+    --max_epoches 100 \
+    --batch_size 32 \
+    --cased 1 \
+    --lm_name bert-base-multilingual-cased \
+    --hidden_dim 768 \
+    --device cuda \
+    --continue_training 0 \
+    --log_to_file logger_mbert_squad.txt
+```
+
 ## Commands
 
 TODO
