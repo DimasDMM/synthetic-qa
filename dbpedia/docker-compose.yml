@@ -1,0 +1,14 @@
+version: '3.6'
+
+services:
+  dbpedia:
+    container_name: dbpedia_${USER}_${LANG}
+    image: dbpedia/dbpedia-spotlight
+    ports:
+      - ${PORT}:80
+    volumes:
+      - ./spotlight-models:/opt/spotlight/models
+    command: /bin/spotlight.sh ${LANG}
+    restart: unless-stopped 
+    networks:
+      - default
