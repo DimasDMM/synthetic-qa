@@ -44,8 +44,14 @@ class ExactMatch:
         y_pred[1] = np.argmax(y_pred[1], axis=-1)
 
         exact_matches = 0
+        skipped_items = 0
         for (idx, y_pred_start, y_pred_end) in zip(indices, y_pred[0], y_pred[1]):
             item = self.dataset.get_full_item(idx)
+
+            # Unanswereable item
+            if item['start_token_idx'] < 0:
+                skipped_items += 1
+                continue
 
             # Get prediction of answer
             y_length = sum(item['attention_mask_context'])
@@ -70,7 +76,7 @@ class ExactMatch:
             self.predictions[idx] = pred_answer
 
         self.metric_score += exact_matches
-        self.n_items += len(indices)
+        self.n_items += len(indices) - skipped_items
 
     def result(self):
         return (self.metric_score / self.n_items) if self.n_items > 0 else 0.

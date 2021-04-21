@@ -24,17 +24,23 @@ def run_qa_training(logger, config: Config):
 
     logger.info('Loading tokenizer')
     tokenizer = get_tokenizer(lm_name=config.lm_name, lowercase=(not config.cased))
-
-    logger.info('Loading dataset: %s' % config.dataset_name)
+    
+    dataset_train_path = config.dataset_train_path
+    dataset_dev_path = config.dataset_dev_path
+    if not os.path.exists(dataset_train_path):
+        raise Exception('Train dataset does not exist: %s' % dataset_train_path)
+    elif not os.path.exists(dataset_dev_path):
+        raise Exception('Dev dataset does not exist: %s' % dataset_dev_path)
+    
     squad_preprocess = SquadPreprocess(tokenizer, max_length=config.max_length)
 
-    dataset_path = get_dataset_path(config.dataset_name, 'train')
-    train_dataset = SquadDataset(squad_preprocess, dataset_path, save_contexts=False)
+    logger.info('Loading train dataset: %s' % dataset_train_path)
+    train_dataset = SquadDataset(squad_preprocess, dataset_train_path, save_contexts=False)
     train_skipped = train_dataset.get_skipped_items()
     logger.info('- Train data: %d (skipped: %d)' % (len(train_dataset), len(train_skipped)))
 
-    dataset_path = get_dataset_path(config.dataset_name, 'dev')
-    dev_dataset = SquadDataset(squad_preprocess, dataset_path)
+    logger.info('Loading dev dataset: %s' % dataset_dev_path)
+    dev_dataset = SquadDataset(squad_preprocess, dataset_dev_path)
     dev_skipped = dev_dataset.get_skipped_items()
     logger.info('- Dev data: %d (skipped: %d)' % (len(dev_dataset), len(dev_skipped)))
     

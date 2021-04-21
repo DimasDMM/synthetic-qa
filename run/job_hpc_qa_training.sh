@@ -4,7 +4,8 @@ source activate tf
 
 python ./run/run_qa_training.py \
     --ckpt_name qa_mbert_squad2 \
-    --dataset_name squad2 \
+    --dataset_train_path ./data/squad2/train-data.json \
+    --dataset_dev_path ./data/squad2/dev-v2.0.json \
     --max_epoches 100 \
     --batch_size 32 \
     --cased 1 \

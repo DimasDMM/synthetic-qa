@@ -96,6 +96,7 @@ def compute_f1(a_gold, a_pred):
 def get_raw_scores(dataset, preds):
     exact_scores = {}
     f1_scores = {}
+    skipped_items = []
     for article in dataset:
         for p in article['paragraphs']:
             for qa in p['qas']:
@@ -107,6 +108,7 @@ def get_raw_scores(dataset, preds):
                     gold_answers = ['']
                 if qid not in preds:
                     print('Missing prediction for %s' % qid)
+                    skipped_items.append(qid)
                     continue
                 a_pred = preds[qid]
                 # Take max over all gold answers
@@ -114,7 +116,7 @@ def get_raw_scores(dataset, preds):
                                         for a in gold_answers)
                 f1_scores[qid] = max(compute_f1(a, a_pred)
                                      for a in gold_answers)
-    return exact_scores, f1_scores
+    return exact_scores, f1_scores, skipped_items
 
 
 def apply_no_ans_threshold(scores, na_probs, qid_to_has_ans, na_prob_thresh):
@@ -128,7 +130,7 @@ def apply_no_ans_threshold(scores, na_probs, qid_to_has_ans, na_prob_thresh):
     return new_scores
 
 
-def make_eval_dict(exact_scores, f1_scores, qid_list=None):
+def make_eval_dict(exact_scores, f1_scores, qid_list=None, skipped_items=[]):
     if not qid_list:
         total = len(exact_scores)
         return collections.OrderedDict([
@@ -139,8 +141,8 @@ def make_eval_dict(exact_scores, f1_scores, qid_list=None):
     else:
         total = len(qid_list)
         return collections.OrderedDict([
-            ('exact', 100.0 * sum(exact_scores[k] for k in qid_list) / total),
-            ('f1', 100.0 * sum(f1_scores[k] for k in qid_list) / total),
+            ('exact', 100.0 * sum(exact_scores[k] if k not in skipped_items else 0. for k in qid_list) / total),
+            ('f1', 100.0 * sum(f1_scores[k] if k not in skipped_items else 0. for k in qid_list) / total),
             ('total', total),
         ])
 
@@ -269,22 +271,25 @@ def main():
             na_probs = json.load(f)
     else:
         na_probs = {k: 0.0 for k in preds}
-    qid_to_has_ans = make_qid_to_has_ans(dataset)    # maps qid to True/False
+
+    qid_to_has_ans = make_qid_to_has_ans(dataset) # maps qid to True/False
     has_ans_qids = [k for k, v in qid_to_has_ans.items() if v]
     no_ans_qids = [k for k, v in qid_to_has_ans.items() if not v]
-    exact_raw, f1_raw = get_raw_scores(dataset, preds)
+    exact_raw, f1_raw, skipped_items = get_raw_scores(dataset, preds)
     exact_thresh = apply_no_ans_threshold(exact_raw, na_probs, qid_to_has_ans,
                                           OPTS.na_prob_thresh)
     f1_thresh = apply_no_ans_threshold(f1_raw, na_probs, qid_to_has_ans,
                                        OPTS.na_prob_thresh)
-    out_eval = make_eval_dict(exact_thresh, f1_thresh)
+    out_eval = make_eval_dict(
+        exact_thresh, f1_thresh, skipped_items=skipped_items)
+
     if has_ans_qids:
         has_ans_eval = make_eval_dict(
-            exact_thresh, f1_thresh, qid_list=has_ans_qids)
+            exact_thresh, f1_thresh, qid_list=has_ans_qids, skipped_items=skipped_items)
         merge_eval(out_eval, has_ans_eval, 'HasAns')
     if no_ans_qids:
         no_ans_eval = make_eval_dict(
-            exact_thresh, f1_thresh, qid_list=no_ans_qids)
+            exact_thresh, f1_thresh, qid_list=no_ans_qids, skipped_items=skipped_items)
         merge_eval(out_eval, no_ans_eval, 'NoAns')
     if OPTS.na_prob_file:
         find_all_best_thresh(out_eval, preds, exact_raw,

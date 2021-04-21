@@ -20,8 +20,7 @@ parser.add_argument('--ckpt_name',
                     default=None,
                     type=none_or_str,
                     action='store')
-parser.add_argument('--dataset_name',
-                    default='squad',
+parser.add_argument('--dataset_test_path',
                     type=str,
                     action='store')
 parser.add_argument('--device',

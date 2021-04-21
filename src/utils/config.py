@@ -5,7 +5,9 @@ class Config:
         self,
         cased=True,
         ckpt_name='model_ckpt',
-        dataset_name='squad',
+        dataset_train_path='train.json',
+        dataset_dev_path='dev.json',
+        dataset_test_path='test.json',
         hidden_dim=768,
         batch_size=32,
         max_epoches=10,
@@ -21,7 +23,9 @@ class Config:
     ):
         self.cased = cased
         self.ckpt_name = ckpt_name
-        self.dataset_name = dataset_name
+        self.dataset_train_path = dataset_train_path
+        self.dataset_dev_path = dataset_dev_path
+        self.dataset_test_path = dataset_test_path
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
         self.max_epoches = max_epoches
