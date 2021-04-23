@@ -8,6 +8,7 @@ class Config:
         dataset_train_path='train.json',
         dataset_dev_path='dev.json',
         dataset_test_path='test.json',
+        output_pred_file='predictions.json',
         hidden_dim=768,
         batch_size=32,
         max_epoches=10,
@@ -26,6 +27,7 @@ class Config:
         self.dataset_train_path = dataset_train_path
         self.dataset_dev_path = dataset_dev_path
         self.dataset_test_path = dataset_test_path
+        self.output_pred_file = output_pred_file
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
         self.max_epoches = max_epoches

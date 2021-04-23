@@ -20,6 +20,7 @@ def run_qa_predict(logger, config: Config):
 
     args_config = config
     dataset_test_path = args_config.dataset_test_path
+    output_pred_file = args_config.output_pred_file
     
     if not os.path.exists(dataset_test_path):
         raise Exception('Test dataset does not exist: %s' % dataset_test_path)
@@ -29,6 +30,7 @@ def run_qa_predict(logger, config: Config):
     logger.info('Loading model...')
     config = manager.load_config(save_path)
     config.device = args_config.device
+    logger.info(config.__dict__)
     model = manager.load_model(save_path, config.lm_name, device=config.device)
 
     logger.info('Loading tokenizer')
@@ -84,11 +86,11 @@ def run_qa_predict(logger, config: Config):
     predictions = qa_metric.get_predictions()
 
     # Get predictionss ans store
-    logger.info('Saving predictionss...')
     save_path = get_project_path('artifacts', config.ckpt_name, 'predictions')
+    logger.info('Saving predictions at: %s' % save_path)
     os.makedirs(save_path, exist_ok=True)
-    filepath = os.path.join(save_path, '%s.json' % dataset_name)
+    filepath = os.path.join(save_path, output_pred_file)
     with open(filepath, 'w') as fp:
         json.dump(predictions, fp)
 
-    logger.info('End training')
+    logger.info('Done')
