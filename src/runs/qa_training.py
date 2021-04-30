@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from .. import *
 from ..data import *
 from ..data.dataset import *
+from ..data.embeddings import *
 from ..data.squad import *
 from ..data.tokenizers import *
 from ..models.metrics import *
@@ -23,7 +24,14 @@ def run_qa_training(logger, config: Config):
     logger.info('== SET UP ==')
 
     logger.info('Loading tokenizer')
-    tokenizer = get_tokenizer(lm_name=config.lm_name, lowercase=(not config.cased))
+    if config.model_type == 'transformers':
+        train_tokenizer = get_piece_tokenizer(lm_name=config.lm_name, lowercase=(not config.cased))
+        dev_tokenizer = train_tokenizer
+    else:
+        train_word_embeddings, _, train_word2id = load_embeddings(config.dataset_train_lang, embeddings_path='muse')
+        dev_word_embeddings, _, dev_word2id = load_embeddings(config.dataset_dev_lang, embeddings_path='muse')
+        train_tokenizer = get_word_tokenizer(lang_code=config.dataset_train_lang, word2id=train_word2id)
+        dev_tokenizer = get_word_tokenizer(lang_code=config.dataset_train_lang, word2id=dev_word2id)
     
     dataset_train_path = config.dataset_train_path
     dataset_dev_path = config.dataset_dev_path
@@ -31,16 +39,16 @@ def run_qa_training(logger, config: Config):
         raise Exception('Train dataset does not exist: %s' % dataset_train_path)
     elif not os.path.exists(dataset_dev_path):
         raise Exception('Dev dataset does not exist: %s' % dataset_dev_path)
-    
-    squad_preprocess = SquadPreprocess(tokenizer, max_length=config.max_length)
 
     logger.info('Loading train dataset: %s' % dataset_train_path)
-    train_dataset = SquadDataset(squad_preprocess, dataset_train_path, save_contexts=False)
+    train_squad_preprocess = SquadPreprocess(train_tokenizer, max_length=config.max_length)
+    train_dataset = SquadDataset(train_squad_preprocess, dataset_train_path, save_contexts=False)
     train_skipped = train_dataset.get_skipped_items()
     logger.info('- Train data: %d (skipped: %d)' % (len(train_dataset), len(train_skipped)))
 
     logger.info('Loading dev dataset: %s' % dataset_dev_path)
-    dev_dataset = SquadDataset(squad_preprocess, dataset_dev_path)
+    dev_squad_preprocess = SquadPreprocess(dev_tokenizer, max_length=config.max_length)
+    dev_dataset = SquadDataset(dev_squad_preprocess, dataset_dev_path)
     dev_skipped = dev_dataset.get_skipped_items()
     logger.info('- Dev data: %d (skipped: %d)' % (len(dev_dataset), len(dev_skipped)))
     
@@ -52,24 +60,31 @@ def run_qa_training(logger, config: Config):
     manager = ModelManager()
     if config.continue_training:
         logger.info('Loading model...')
-        model, config = manager.load(save_path, config.device)
+        args_config = config
+        train_model, config = manager.load(save_path, config.device)
+        dev_model = train_model
         logger.info(config.__dict__)
         best_score = config.current_score
+        if args_config.model_type != config.model_type:
+            raise Exception('Expected model "%s", but "%s" found!' % (args_config.model_type, config.model_type))
     else:
         logger.info('Building model...')
-        model = manager.build(config.lm_name, device=config.device)
+        if config.model_type == 'transformers':
+            train_model = manager.build(lm_name=config.lm_name, device=config.device)
+            dev_model = train_model
+        else:
+            train_model = manager.build(word_embeddings=train_word_embeddings, word2id=train_word2id, device=config.device)
+            dev_model = manager.build(word_embeddings=dev_word_embeddings, word2id=dev_word2id, device=config.device)
 
     # Training step
     logger.info('== MODEL TRAINING ==')
     
-    logger.info('Creating metrics...')
-    #train_exact_match = ExactMatch(train_dataset, device=config.device)
+    logger.info('Creating metrics and optimizer...')
     dev_exact_match = ExactMatch(dev_dataset, device=config.device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
-
-    n_batches = len(train_dataloader)
+    optimizer = torch.optim.Adam(train_model.parameters(), lr=config.learning_rate)
 
     logger.info('Start training')
+    n_batches = len(train_dataloader)
 
     for _ in range(config.max_epoches):
         run_loss = 0
@@ -77,7 +92,7 @@ def run_qa_training(logger, config: Config):
         config.current_epoch += 1
 
         # Set model to training mode
-        model.train()
+        train_model.train()
 
         for i_batch, batch_data in enumerate(train_dataloader):
             optimizer.zero_grad()
@@ -90,12 +105,12 @@ def run_qa_training(logger, config: Config):
             end_token_idx = batch_data['end_token_idx'].to(device=config.device)
 
             # Inference
-            loss, outputs1, outputs2 = model(input_ids=input_ids,
-                                             token_type_ids=token_type_ids,
-                                             attention_mask=attention_mask,
-                                             start_positions=start_token_idx,
-                                             end_positions=end_token_idx,
-                                             return_dict=False)
+            loss, outputs1, outputs2 = train_model(input_ids=input_ids,
+                                                   token_type_ids=token_type_ids,
+                                                   attention_mask=attention_mask,
+                                                   start_positions=start_token_idx,
+                                                   end_positions=end_token_idx,
+                                                   return_dict=False)
             
             # Compute loss
             loss.backward()
@@ -123,19 +138,20 @@ def run_qa_training(logger, config: Config):
                                                       run_loss / len(train_dataloader)))
 
         logger.info('Evaluating model...')
-        model.eval() # Set model to eval mode
-
-        #train_score = train_exact_match.eval(model)
-        dev_score = dev_exact_match.eval(model)
-
-        #logger.info('Train Score: %.4f | Dev Score: %.4f | Best: %.4f' % (
-        #            train_score, dev_score, best_score))
+        
+        if config.model_type == 'muse':
+            # In the case of MUSE, we have to transfer the weights to the dev model
+            hidden_layer_weights, start_span_weights, end_span_weights = train_model.get_top_weights()
+            dev_model.set_top_weights(hidden_layer_weights, start_span_weights, end_span_weights)
+        
+        dev_model.eval() # Set model to eval mode
+        dev_score = dev_exact_match.eval(dev_model)
         logger.info('Dev Score: %.4f | Best: %.4f' % (dev_score, best_score))
         
         if dev_score > best_score:
             logger.info('Score Improved! Saving model...')
             best_score = dev_score
             config.current_score = best_score
-            manager.save(model, config, save_path)
+            manager.save(train_model, config, save_path)
     
     logger.info('End training')

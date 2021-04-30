@@ -4,10 +4,14 @@ class Config:
     def __init__(
         self,
         cased=True,
+        model_type='transformers',
         ckpt_name='model_ckpt',
         dataset_train_path='train.json',
+        dataset_train_lang='en',
         dataset_dev_path='dev.json',
+        dataset_dev_lang='en',
         dataset_test_path='test.json',
+        dataset_test_lang='en',
         output_pred_file='predictions.json',
         hidden_dim=768,
         batch_size=32,
@@ -23,10 +27,14 @@ class Config:
         **kargs,
     ):
         self.cased = cased
+        self.model_type = model_type
         self.ckpt_name = ckpt_name
         self.dataset_train_path = dataset_train_path
+        self.dataset_train_lang = dataset_train_lang
         self.dataset_dev_path = dataset_dev_path
+        self.dataset_dev_lang = dataset_dev_lang
         self.dataset_test_path = dataset_test_path
+        self.dataset_test_lang = dataset_test_lang
         self.output_pred_file = output_pred_file
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size

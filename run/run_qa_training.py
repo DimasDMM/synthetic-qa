@@ -16,6 +16,10 @@ parser.add_argument('--log_to_file',
                     default=None,
                     type=none_or_str,
                     action='store')
+parser.add_argument('--model_type',
+                    default='transformers',
+                    type=str,
+                    action='store')
 parser.add_argument('--ckpt_name',
                     default=None,
                     type=none_or_str,

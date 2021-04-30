@@ -16,11 +16,19 @@ parser.add_argument('--log_to_file',
                     default=None,
                     type=none_or_str,
                     action='store')
+parser.add_argument('--model_type',
+                    default='transformers',
+                    type=str,
+                    action='store')
 parser.add_argument('--ckpt_name',
                     default=None,
                     type=none_or_str,
                     action='store')
 parser.add_argument('--dataset_test_path',
+                    default='predictions.json',
+                    type=str,
+                    action='store')
+parser.add_argument('--output_pred_file',
                     type=str,
                     action='store')
 parser.add_argument('--device',

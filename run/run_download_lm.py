@@ -19,10 +19,6 @@ parser.add_argument('--lm_name',
                     default='bert-base-multilingual-cased',
                     type=str,
                     action='store')
-parser.add_argument('--model_type',
-                    default='tf',
-                    type=str,
-                    action='store')
 args = parser.parse_args()
 setup_logger(logger, args.log_to_file)
 
@@ -34,7 +30,7 @@ if not os.path.exists(save_path):
     os.makedirs(save_path)
 
 logger.info('Download tokenizer')
-slow_tokenizer = AutoTokenizer.from_pretrained(args.lm_name)
+slow_tokenizer = AutoTokenizer.from_pretrained(args.lm_name, use_fast=True)
 slow_tokenizer.save_pretrained(save_path)
 
 logger.info('Download model')

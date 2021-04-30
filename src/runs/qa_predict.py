@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from .. import *
 from ..data import *
 from ..data.dataset import *
+from ..data.embeddings import *
 from ..data.squad import *
 from ..data.tokenizers import *
 from ..models.metrics import *
@@ -20,10 +21,13 @@ def run_qa_predict(logger, config: Config):
 
     args_config = config
     dataset_test_path = args_config.dataset_test_path
+    dataset_test_lang = args_config.dataset_test_lang
     output_pred_file = args_config.output_pred_file
     
     if not os.path.exists(dataset_test_path):
         raise Exception('Test dataset does not exist: %s' % dataset_test_path)
+    elif args_config.model_type != config.model_type:
+        raise Exception('Expected model "%s", but "%s" found!' % (args_config.model_type, config.model_type))
 
     # Load config and model
     manager = ModelManager()
@@ -31,16 +35,27 @@ def run_qa_predict(logger, config: Config):
     config = manager.load_config(save_path)
     config.device = args_config.device
     logger.info(config.__dict__)
-    model = manager.load_model(save_path, config.lm_name, device=config.device)
 
-    logger.info('Loading tokenizer')
-    tokenizer = get_tokenizer(lm_name=config.lm_name, lowercase=(not config.cased))
+    if config.model_type == 'transformers':
+        train_tokenizer = get_piece_tokenizer(lm_name=config.lm_name, lowercase=(not config.cased))
+        train_model = manager.load_model(save_path, lm_name=config.lm_name, device=config.device)
+        test_tokenizer = train_tokenizer
+        test_model = train_model
+    else:
+        train_word_embeddings, _, train_word2id = load_embeddings(config.dataset_train_lang, embeddings_path='muse')
+        train_tokenizer = get_word_tokenizer(lang_code=config.dataset_train_lang, word2id=train_word2id)
+        train_model = manager.load_model(save_path, word_embeddings=train_word_embeddings, device=config.device)
+
+        test_word_embeddings, _, test_word2id = load_embeddings(dataset_test_lang, embeddings_path='muse')
+        test_tokenizer = get_word_tokenizer(lang_code=dataset_test_lang, word2id=test_word2id)
+        test_model = manager.load_model(save_path, word_embeddings=train_word_embeddings, device=config.device)
+        test_model.set_embedding_layer(test_word_embeddings)
 
     # Training step
     logger.info('== MODEL PREDICT ==')
 
     logger.info('Loading dataset: %s' % dataset_test_path)
-    squad_preprocess = SquadPreprocess(tokenizer, max_length=config.max_length)
+    squad_preprocess = SquadPreprocess(test_tokenizer, max_length=config.max_length)
     test_dataset = SquadDataset(squad_preprocess, dataset_test_path)
     logger.info('- Test data: %d' % len(test_dataset))
     
@@ -49,7 +64,7 @@ def run_qa_predict(logger, config: Config):
     
     logger.info('Computing predictions...')
     qa_metric = ExactMatch(test_dataset, device=config.device)
-    model.eval() # Set model to eval mode
+    test_model.eval() # Set model to eval mode
 
     for batch_data in test_dataloader:
         input_ids = batch_data['input_ids'].to(device=config.device)
@@ -60,7 +75,7 @@ def run_qa_predict(logger, config: Config):
         
         attention_mask_context = batch_data['attention_mask_context']
 
-        outputs = model(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
+        outputs = test_model(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
         y_pred_start = outputs[0].cpu().detach().numpy()
         y_pred_end = outputs[1].cpu().detach().numpy()
         y_pred = [y_pred_start, y_pred_end]
@@ -86,7 +101,7 @@ def run_qa_predict(logger, config: Config):
     predictions = qa_metric.get_predictions()
 
     # Get predictionss ans store
-    save_path = get_project_path('artifacts', config.ckpt_name, 'predictions')
+    save_path = get_project_path('artifacts', 'predictions', config.ckpt_name)
     logger.info('Saving predictions at: %s' % save_path)
     os.makedirs(save_path, exist_ok=True)
     filepath = os.path.join(save_path, output_pred_file)
