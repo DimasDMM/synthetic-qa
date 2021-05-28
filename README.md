@@ -42,6 +42,15 @@ wget https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json --no-check
 cd ./../..
 ```
 
+## Generate synthetic data
+
+The main strength of this project consists of generating a synthetic datasets
+for QA. In order to generate it, you should run the notebook
+[Synthetic-WikiGoogle-TopN-Multithread.ipynb](./notebooks/Synthetic-WikiGoogle-TopN-Multithread.ipynb).
+
+Note that some notebooks use Custom Search Engine of Google, so you need to
+provide a valid API Key to run them.
+
 ## Commands
 
 ### Training
