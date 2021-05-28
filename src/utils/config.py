@@ -12,6 +12,7 @@ class Config:
         dataset_dev_lang='en',
         dataset_test_path='test.json',
         dataset_test_lang='en',
+        output_pred_path='artifacts/predictions',
         output_pred_file='predictions.json',
         hidden_dim=768,
         batch_size=32,
@@ -35,6 +36,7 @@ class Config:
         self.dataset_dev_lang = dataset_dev_lang
         self.dataset_test_path = dataset_test_path
         self.dataset_test_lang = dataset_test_lang
+        self.output_pred_path = output_pred_path
         self.output_pred_file = output_pred_file
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
@@ -52,6 +54,11 @@ class Config:
         for k, v in kargs.items():
             setattr(obj, k, v)
         return obj
+    
+    def copy_from(self, obj):
+        for attr_name in dir(obj):
+            if not attr_name.startswith('__') and not callable(getattr(obj, attr_name)):
+                setattr(self, attr_name, getattr(obj, attr_name))
     
     def copy(self, deep=False):
         if deep:
