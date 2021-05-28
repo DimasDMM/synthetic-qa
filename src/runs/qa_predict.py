@@ -22,6 +22,7 @@ def run_qa_predict(logger, config: Config):
     args_config = config
     dataset_test_path = args_config.dataset_test_path
     dataset_test_lang = args_config.dataset_test_lang
+    output_pred_path = args_config.output_pred_path
     output_pred_file = args_config.output_pred_file
     
     if not os.path.exists(dataset_test_path):
@@ -30,9 +31,13 @@ def run_qa_predict(logger, config: Config):
         raise Exception('Expected model "%s", but "%s" found!' % (args_config.model_type, config.model_type))
 
     # Load config and model
-    manager = ModelManager()
     logger.info('Loading model...')
-    config = manager.load_config(save_path)
+    if args_config.model_type == 'transformers':
+        manager = BertModelManager()
+    else:
+        manager = MuseModelManager()
+    config = Config()
+    config.copy_from(manager.load_config(save_path))
     config.device = args_config.device
     logger.info(config.__dict__)
 
@@ -63,49 +68,25 @@ def run_qa_predict(logger, config: Config):
     test_dataloader = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=False, num_workers=0)
     
     logger.info('Computing predictions...')
-    qa_metric = ExactMatch(test_dataset, device=config.device)
+    
+    test_dataloader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=0)
+    model_predictions = ModelPredictions(device=config.device)
+    qa_em_metric = ExactMatchMetric()
+    qa_f1_metric = F1ScoreMetric()
     test_model.eval() # Set model to eval mode
 
-    for batch_data in test_dataloader:
-        input_ids = batch_data['input_ids'].to(device=config.device)
-        token_type_ids = batch_data['token_type_ids'].to(device=config.device)
-        attention_mask = batch_data['attention_mask'].to(device=config.device)
-        start_token_idx = batch_data['start_token_idx'].to(device=config.device)
-        end_token_idx = batch_data['end_token_idx'].to(device=config.device)
-        
-        attention_mask_context = batch_data['attention_mask_context']
-
-        outputs = test_model(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
-        y_pred_start = outputs[0].cpu().detach().numpy()
-        y_pred_end = outputs[1].cpu().detach().numpy()
-        y_pred = [y_pred_start, y_pred_end]
-
-        indices = batch_data['idx']
-        qa_metric.add_predictions(indices, y_pred)
-        
-        # Clear some memory
-        if config.device == 'cuda':
-            del input_ids
-            del token_type_ids
-            del attention_mask
-            del attention_mask_context
-            del start_token_idx
-            del end_token_idx
-            del outputs
-            gc.collect()
-            torch.cuda.empty_cache()
+    test_predictions = model_predictions.get_predictions(test_model, test_dataloader, test_dataset)
+    em_score, _ = qa_em_metric.eval(test_dataset, test_predictions)
+    f1_score, _ = qa_f1_metric.eval(test_dataset, test_predictions)
     
-    result = qa_metric.result()
-    logger.info('Score: %.4f' % result)
-
-    predictions = qa_metric.get_predictions()
+    logger.info('ExactMatch: %.4f | F1-Score: %.4f' % (em_score, f1_score))
 
     # Get predictionss ans store
-    save_path = get_project_path('artifacts', 'predictions', config.ckpt_name)
+    save_path = get_project_path(output_pred_path, config.ckpt_name)
     logger.info('Saving predictions at: %s' % save_path)
     os.makedirs(save_path, exist_ok=True)
     filepath = os.path.join(save_path, output_pred_file)
     with open(filepath, 'w') as fp:
-        json.dump(predictions, fp)
+        json.dump(test_predictions, fp)
 
     logger.info('Done')

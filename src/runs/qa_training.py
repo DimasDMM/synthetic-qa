@@ -57,7 +57,11 @@ def run_qa_training(logger, config: Config):
     train_dataloader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=0)
 
     # Load trained model or build a new one
-    manager = ModelManager()
+    if config.model_type == 'transformers':
+        manager = BertModelManager()
+    else:
+        manager = MuseModelManager()
+
     if config.continue_training:
         logger.info('Loading model...')
         args_config = config
@@ -80,8 +84,11 @@ def run_qa_training(logger, config: Config):
     logger.info('== MODEL TRAINING ==')
     
     logger.info('Creating metrics and optimizer...')
-    dev_exact_match = ExactMatch(dev_dataset, device=config.device)
     optimizer = torch.optim.Adam(train_model.parameters(), lr=config.learning_rate)
+
+    dev_dataloader = DataLoader(dev_dataset, batch_size=8, shuffle=True, num_workers=0)
+    model_predictions = ModelPredictions(device=config.device)
+    dev_exact_match = ExactMatchMetric()
 
     logger.info('Start training')
     n_batches = len(train_dataloader)
@@ -145,7 +152,8 @@ def run_qa_training(logger, config: Config):
             dev_model.set_top_weights(hidden_layer_weights, start_span_weights, end_span_weights)
         
         dev_model.eval() # Set model to eval mode
-        dev_score = dev_exact_match.eval(dev_model)
+        dev_predictions = model_predictions.get_predictions(dev_model, dev_dataloader, dev_dataset)
+        dev_score, _ = dev_exact_match.eval(dev_dataset, dev_predictions)
         logger.info('Dev Score: %.4f | Best: %.4f' % (dev_score, best_score))
         
         if dev_score > best_score:
