@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=mbert_2squad     # Job name
+#SBATCH --job-name=mbert_squad      # Job name
 #SBATCH --error=task.err            # File for outputting error
 #SBATCH --output=task.log           # File for outputting results
 #SBATCH --time=96:00:00             # Maximum execution time
