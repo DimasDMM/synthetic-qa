@@ -1,8 +1,13 @@
+# IDE
+.vscode
+
+# Python
 .ipynb_checkpoints/
 __pycache__/
 artifacts/
 /data/
 *.log
+*.err
 
 # DBPedia
 dbpedia/spotlight-models/
