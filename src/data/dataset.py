@@ -18,7 +18,7 @@ class SquadDataset(torch.utils.data.Dataset):
         self.context_offsets = []
         self.contexts = []
         self.answerables = []
-        self.other_answers = []
+        self.all_answers = []
 
         # Tensor attributes
         self.input_ids = []
@@ -60,7 +60,7 @@ class SquadDataset(torch.utils.data.Dataset):
             'end_token_idx': item['end_token_idx'],
             'context': self.contexts[i],
             'is_impossible': self.answerables[i],
-            'other_answers': self.other_answers[i],
+            'all_answers': self.all_answers[i],
         }
     
     def get_skipped_items(self):
@@ -95,7 +95,7 @@ class SquadDataset(torch.utils.data.Dataset):
                         squad_item = squad_preprocess.preprocess(idx, question, context, is_impossible=is_impossible)
                     else:
                         answer_text = qa['answers'][0]['text']
-                        other_answers = [x['text'] for x in qa['answers'][1:]]
+                        all_answers = [x['text'] for x in qa['answers']]
                         start_char_idx = qa['answers'][0]['answer_start']
                         squad_item = squad_preprocess.preprocess(idx, question, context, start_char_idx,
                                 answer_text, is_impossible=is_impossible)
@@ -103,9 +103,9 @@ class SquadDataset(torch.utils.data.Dataset):
                         self.skipped_idx.append(idx)
                         continue
                     self.n_items += 1
-                    self._add_item(idx, squad_item, other_answers)
+                    self._add_item(idx, squad_item, all_answers)
     
-    def _add_item(self, idx, squad_item, other_answers=[]):
+    def _add_item(self, idx, squad_item, all_answers=[]):
         self.idx.append(idx)
         self.context_tokens.append(squad_item['tokens'])
         self.context_offsets.append(squad_item['offsets'])
@@ -116,7 +116,7 @@ class SquadDataset(torch.utils.data.Dataset):
         self.start_token_idx.append(squad_item['start_token_idx'])
         self.end_token_idx.append(squad_item['end_token_idx'])
         self.answerables.append(squad_item['is_impossible'])
-        self.other_answers.append(other_answers)
+        self.all_answers.append(all_answers)
         if self.save_contexts:
             self.contexts.append(squad_item['context'])
         else:
